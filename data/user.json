@@ -1,0 +1,37 @@
+[
+	{
+		"username": "gcl",
+		"name": "李國川",
+		"email": "gcl@nuu.edu.tw",
+		"password": "gclgcl",
+		"role": "instructor"
+	},
+	{
+		"username": "U0924013",
+		"name": "楊翔鈞",
+		"email": "U0924013@o365.nuu.edu.tw",
+		"password": "U0924013",
+		"role": "student"
+	},
+	{
+		"username": "U0924014",
+		"name": "劉承浩",
+		"email": "U0924014@o365.nuu.edu.tw",
+		"password": "U0924014",
+		"role": "student"
+	},
+	{
+		"username": "U0924015",
+		"name": "羅子程",
+		"email": "u0924015@o365.nuu.edu.tw",
+		"password": "U0924015",
+		"role": "student"
+	},
+	{
+		"username": "U0924032",
+		"name": "林昌明",
+		"email": "U0924032@o365.nuu.edu.tw",
+		"password": "U0924032",
+		"role": "student"
+	}
+]
