@@ -1,4 +1,5 @@
 import CourseModel from '@/models/CourseModel'
+import Axios from 'axios'
 import { type Request, type Response } from 'express'
 import path from 'path'
 import { v4 } from 'uuid'
@@ -49,7 +50,7 @@ const courseController = {
     sampleFile.mv(uploadPath, async (err) => {
       if (err !== undefined) return res.status(500).send({ success: false, message: 'Something went wrong.' })
       else {
-        await waitForTimeout(5000)
+        const response = await Axios.post(process.env.PYTHON_HOST_Local ?? 'http://localhost:8001', { fileName })
         return res.send({ success: true })
       }
     })
