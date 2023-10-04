@@ -29,11 +29,8 @@ resultObject =
                 ]
 }
 '''
-# 取得當前路徑 "C:\workspace\server\src\script"
-curr_path = os.getcwd()
-print(curr_path)
-# 取得root的路徑(Project root)("C:\workspace\server")
-root = prev_dir(curr_path,2)
+# 取得root的路徑 "C:\workspace\server"
+root = os.getcwd()
 print(root)
 def getRecognizeResult(img, detectedResults):
     # 建立將來要回傳的所有辨識結果
@@ -58,24 +55,11 @@ def getRecognizeResult(img, detectedResults):
         # 取得record資料夾的路徑 C:\workspace\server\public\static\attendance_records
         records_path = os.path.join(root, "public", "static", "attendance_records")
         # 取得儲存record檔案(.jpg)的路徑
-        file_path = records_path + f"{fileName}.jpg"
+        file_path = os.path.join(records_path, fileName + '.jpg')
         plt.imsave(file_path, face)
         id = getIdentity(file_path)
         # 紀錄id至result
         result["id"]= id
-        ######
-        # 以gird顯示
-        c = 5
-        t = resultObject["poepleNumbers"]
-        r = t // c
-        if t % c != 0:
-            r += 1
-        plt.subplot(r,c,count)
-        plt.axis('off')
-        plt.title(id)
-        plt.imshow(face)
-        count += 1
-        #####
         recognizeResults.append(result)
     return recognizeResults
 
@@ -119,13 +103,13 @@ def getIdentity(img_path):
     return maxID
 
 # 主程式
-def faceRecognize(fileName):
+def faceRecognize(file_name):
     global resultObject
     resultObject = {}
-    # 取得record資料夾的路徑 "C:\workspace\server\private\users_face"
+    # 取得record資料夾的路徑 "C:\workspace\server\private\roll_call_original"
     records_path = os.path.join(root, "private", "roll_call_original")
     # 取得儲存 roll_call_original 檔案的路徑
-    file_path = os.path.join(records_path, fileName)
+    file_path = os.path.join(records_path, file_name)
     # 加载图像
     image = Image.open(file_path)
     image = image.convert('RGB')
