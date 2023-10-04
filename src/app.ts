@@ -12,6 +12,9 @@ import path from 'path'
 import useRoutes from '@/routes'
 import fileUpload from 'express-fileupload'
 import mongoose from 'mongoose'
+
+import '@/runPython'
+
 mongoose
   .connect(process.env.mongoConnect ?? '', {
     // useNewUrlParser: true,

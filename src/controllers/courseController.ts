@@ -4,7 +4,7 @@ import { type Request, type Response } from 'express'
 import path from 'path'
 import { v4 } from 'uuid'
 
-const waitForTimeout = async (seconds: number): Promise<void> => { await new Promise((resolve) => setTimeout(resolve, seconds)) }
+// const waitForTimeout = async (seconds: number): Promise<void> => { await new Promise((resolve) => setTimeout(resolve, seconds)) }
 
 const courseController = {
   insertOne: async (req: Request, res: Response) => {
@@ -32,8 +32,6 @@ const courseController = {
     }
   },
   rollCallByImage: async (req: Request, res: Response) => {
-    console.log(req.body)
-    console.log(req.files)
     const file = req.files?.image
 
     if (file === undefined || Array.isArray(file)) {
@@ -50,8 +48,15 @@ const courseController = {
     sampleFile.mv(uploadPath, async (err) => {
       if (err !== undefined) return res.status(500).send({ success: false, message: 'Something went wrong.' })
       else {
-        const response = await Axios.post(process.env.PYTHON_HOST_Local ?? 'http://localhost:8001', { fileName })
-        return res.send({ success: true })
+        try {
+          const URL = `${process.env.PYTHON_HOST_Local ?? 'http://localhost:8001'}`
+          console.log('POST to : ', URL)
+          const response = await Axios.post(URL, { fileName })
+          console.log(response.data)
+          return res.send({ success: true })
+        } catch (error) {
+          return res.status(500).send({ success: false, message: 'Something went wrong.' })
+        }
       }
     })
   }
