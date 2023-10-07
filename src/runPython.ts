@@ -6,17 +6,17 @@ const pythonScriptPath = path.join(process.cwd(), 'src', 'scripts', 'test.py')
 const pythonProcess = spawn('python', [pythonScriptPath])
 
 pythonProcess.stdout.on('data', (data) => {
-  console.log(`Python script output: ${data}`)
+  console.log(`Python server output: ${data}`)
 })
 
 pythonProcess.stderr.on('data', (data) => {
-  console.error(`Python script error: ${data}`)
+  console.error(`Python server error: ${data}`)
 })
 
 pythonProcess.on('close', (code) => {
   if (code === 0) {
-    console.log('Python script executed successfully.')
+    console.error('Python server died.')
   } else {
-    console.error(`Python script exited with code ${code}`)
+    console.error(`Python server exited with code ${code}`)
   }
 })

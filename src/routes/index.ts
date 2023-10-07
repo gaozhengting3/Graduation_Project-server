@@ -1,4 +1,5 @@
 import { passportMiddleware } from '@/configs/passport'
+import attendantRouter from '@/routes/attendantRoutes'
 import authRouter from '@/routes/authRoutes'
 import courseRouter from '@/routes/courseRoutes'
 import userRouter from '@/routes/userRoutes'
@@ -10,6 +11,7 @@ passport.use(passportMiddleware)
 const APIRouter = Router()
 APIRouter.use('/course', courseRouter)
 APIRouter.use('/user', userRouter)
+APIRouter.use('/attendant', attendantRouter)
 
 export default function useRoutes (app: Express): void {
   // app.use('/api', APIRouter)

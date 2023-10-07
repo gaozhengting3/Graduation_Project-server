@@ -13,7 +13,7 @@ import useRoutes from '@/routes'
 import fileUpload from 'express-fileupload'
 import mongoose from 'mongoose'
 
-import '@/runPython'
+// import '@/runPython'
 
 // merge test
 
@@ -27,14 +27,14 @@ mongoose
 
 const app = express()
 const server = http.createServer(app)
-const publicPath = path.join(__dirname, 'public', 'build')
+const publicPath = path.join(path.dirname(__dirname), 'public', 'static')
 
 // -- middleware --//
 app.use(cors())
+app.use(fileUpload())
+app.use(express.json())
 app.use(express.static(publicPath))
 app.use(express.urlencoded({ extended: true }))
-app.use(express.json())
-app.use(fileUpload())
 app.use(morgan('dev'))
 
 // -- routes --//

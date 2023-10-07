@@ -1,5 +1,5 @@
 import { ExtractJwt, Strategy, type StrategyOptions } from 'passport-jwt'
-import User, { type TUser } from '../models/UserModel'
+import User, { type TUser } from '../models/User'
 const opts: StrategyOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme('jwt'),
   secretOrKey: process.env.PASSPORT_SECRET

@@ -1,11 +1,14 @@
 {
 	"compilerOptions": {
+		"resolveJsonModule": true,
 		"target": "es2016",
 		"module": "commonjs",
 		// "rootDir": "./src",
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"],
+			"@data/*": ["./data/*"],
+			"@private/*": ["./private/*"],
 			"@public/*": ["./public/*"]
 		},
 		"outDir": "./dist",

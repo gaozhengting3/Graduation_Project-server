@@ -4,39 +4,12 @@ import mongoose, { type Document, type InferSchemaType } from 'mongoose'
 const USER_ROLES = ['student', 'instructor', 'assistant']
 const userSchema = new mongoose.Schema(
   {
-    username: {
-      type: String,
-      required: true,
-      minLength: 3,
-      maxLength: 50
-    },
-    name: {
-      type: String,
-      required: true,
-      minLength: 2,
-      maxLength: 50
-    },
-    email: {
-      type: String,
-      required: true,
-      minLength: 6,
-      maxLength: 100
-    },
-    password: {
-      type: String,
-      required: true,
-      minLength: 6,
-      maxLength: 1024
-    },
-    role: {
-      type: String,
-      required: true,
-      enum: USER_ROLES
-    },
-    thumbnail: {
-      type: String,
-      default: ''
-    }
+    username: { type: String, required: true, minLength: 3, maxLength: 50 },
+    name: { type: String, required: true, minLength: 2, maxLength: 50 },
+    email: { type: String, required: true, minLength: 6, maxLength: 100 },
+    password: { type: String, required: true, minLength: 6, maxLength: 1024 },
+    role: { type: String, required: true, enum: USER_ROLES },
+    thumbnail: { type: String, default: '' }
   },
   {
     methods: {
