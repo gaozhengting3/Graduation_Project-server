@@ -31,4 +31,8 @@ def test():
     return "Hello"
 
 if __name__ == '__main__':
+    #attendance_records_path = C:\workspace\server\public\static\attendance_records
+    attendance_records_path = os.path.join(os.getcwd(),"public","static","attendance_records")
+    if not os.path.exists(attendance_records_path):
+        os.makedirs(attendance_records_path)
     app.run(host='0.0.0.0' ,port=8001, debug=True)

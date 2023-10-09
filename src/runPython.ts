@@ -1,7 +1,7 @@
 import { spawn } from 'child_process'
 import path from 'path'
 
-const pythonScriptPath = path.join(process.cwd(), 'src', 'scripts', 'test.py')
+const pythonScriptPath = path.join(process.cwd(), 'src', 'scripts', 'backend.py')
 
 const pythonProcess = spawn('python', [pythonScriptPath])
 

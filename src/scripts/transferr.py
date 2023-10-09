@@ -163,7 +163,7 @@ def faceRecognize(file_name, course, id_list, flag):
     # 取得課程的模型路徑
     model_path = os.path.join(root, "private", "courses",course,f"{course}.h5")
     # 若模型不存在則訓練一個模型
-    if os.path.exists(model_path):
+    if not os.path.exists(model_path):
         make_model(model_path, id_list)
     # 如果課程的人員有變動
     if flag == True:
@@ -201,6 +201,8 @@ def retrain(model_path, id_list):
             Y.append(index)
     X = np.array(X)
     Y = np.array(Y)
+    print(Y.shape)
+    print(Y)
     Y = to_categorical(Y)
     # 輸出層的結果數，也等於len(id_list)
     out_dim = Y.shape[1]

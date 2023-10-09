@@ -96,6 +96,8 @@ const courseController = {
     }
   },
   rollCallByImage: async (req: Request, res: Response) => {
+    console.log("!!!!");
+    
     try {
       const file = req.files?.image
       const course = JSON.parse(req.body?.course as unknown as string) as TCourse
@@ -117,19 +119,21 @@ const courseController = {
         } else {
           const dateTime = new Date()
 
-          // const URL = `${process.env.PYTHON_HOST_Local ?? 'http://localhost:8001'}`
-          // const requestBody = { fileName, dateTime, course }
-          // const response = await Axios.post(URL, requestBody)
-          // const recognizeResult = response.data as recognizeResponse
-          const recognizeResult: recognizeResponse = {
-            originImageSize: { width: 100, height: 100 },
-            peopleNumbers: 6,
-            recognizeResults: [{
-              _id: '65075f2c47c2465a36eaddda' as unknown as mongoose.Types.ObjectId,
-              facePosition: { x: 0, y: 0, w: 0, h: 0 },
-              fileName: '9f33b7a1-a72e-43b9-a40c-c573d3e60df5-035.jpg'
-            }]
-          }
+          const URL = `${process.env.PYTHON_HOST ?? 'http://localhost:8001'}`
+          const requestBody = { fileName, dateTime, course }
+          console.log(requestBody);
+          
+          const response = await Axios.post(URL, requestBody)
+          const recognizeResult = response.data as recognizeResponse
+          // const recognizeResult: recognizeResponse = {
+          //   originImageSize: { width: 100, height: 100 },
+          //   peopleNumbers: 6,
+          //   recognizeResults: [{
+          //     _id: '65075f2c47c2465a36eaddda' as unknown as mongoose.Types.ObjectId,
+          //     facePosition: { x: 0, y: 0, w: 0, h: 0 },
+          //     fileName: '9f33b7a1-a72e-43b9-a40c-c573d3e60df5-035.jpg'
+          //   }]
+          // }
           const attendant = new Attendant({
             course: course?._id,
             attendanceMethod: 'Picture',
