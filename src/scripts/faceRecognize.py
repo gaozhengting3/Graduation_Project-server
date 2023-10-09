@@ -31,7 +31,7 @@ resultObject =
 '''
 # 取得root的路徑 "C:\workspace\server"
 root = os.getcwd()
-print(root)
+
 def getRecognizeResult(img, detectedResults):
     # 建立將來要回傳的所有辨識結果
     recognizeResults = []
@@ -106,8 +106,8 @@ def getIdentity(img_path):
 def faceRecognize(file_name):
     global resultObject
     resultObject = {}
-    # 取得record資料夾的路徑 "C:\workspace\server\private\roll_call_original"
-    records_path = os.path.join(root, "private", "roll_call_original")
+    # 取得record資料夾的路徑 C:\workspace\server\public\static\roll_call_original
+    records_path = os.path.join(root, "public", "static", "roll_call_original")
     # 取得儲存 roll_call_original 檔案的路徑
     file_path = os.path.join(records_path, file_name)
     # 加载图像
