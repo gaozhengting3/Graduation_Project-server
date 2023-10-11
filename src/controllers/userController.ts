@@ -3,6 +3,15 @@ import { type Request, type Response } from 'express'
 import JWT from 'jsonwebtoken'
 
 const userController = {
+  getAllByRole: async (req: Request, res: Response) => {
+    try {
+      const { role } = req.params
+      const students = await User.find({ role })
+      return res.status(200).json({ success: true, data: { students } })
+    } catch (error) {
+      return res.status(500).json({ success: false, error: 'Something went wrong.' })
+    }
+  },
   insertOne: async (req: Request, res: Response) => {
     try {
       const { username, name, email, password, role, thumbnail } = req.body

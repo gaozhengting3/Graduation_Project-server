@@ -15,8 +15,6 @@ import mongoose from 'mongoose'
 
 // import '@/runPython'
 
-// merge test
-
 mongoose
   .connect(process.env.mongoConnect ?? '', {
     // useNewUrlParser: true,
@@ -40,6 +38,6 @@ app.use(morgan('dev'))
 // -- routes --//
 useRoutes(app)
 
-app.get('/*', (_, res) => res.status(404).send({ success: false, message: 'route not found' }))
+app.get('/*', (_, res) => res.status(404).send({ success: false, message: 'Resources not found.' }))
 
 server.listen(process.env.PORT ?? 8000, () => { console.log(`Server is running on http://localhost:${process.env.PORT ?? 8000}.`) })

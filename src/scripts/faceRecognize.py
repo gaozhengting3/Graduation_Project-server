@@ -32,6 +32,7 @@ resultObject =
 # 取得root的路徑 "C:\workspace\server"
 root = os.getcwd()
 
+
 def getRecognizeResult(img, detectedResults):
     # 建立將來要回傳的所有辨識結果
     recognizeResults = []
@@ -43,39 +44,42 @@ def getRecognizeResult(img, detectedResults):
         h = rectangle.height()
         x = rectangle.left()
         w = rectangle.width()
-        
-        facePosition = { "x": x, "y": y, "w": w, "h": h }
+
+        facePosition = {"x": x, "y": y, "w": w, "h": h}
         # 紀錄facePosition至result
-        result["facePosition"]= facePosition
+        result["facePosition"] = facePosition
         # 從圖片中截下人臉區域
-        face = img[y:y+h,x:x+h]
+        face = img[y:y+h, x:x+h]
         # 紀錄fileName至
         fileName = str(uuid.uuid1())
-        result["fileName"]= fileName + ".jpg"
+        result["fileName"] = fileName + ".jpg"
         # 取得record資料夾的路徑 C:\workspace\server\public\static\attendance_records
-        records_path = os.path.join(root, "public", "static", "attendance_records")
+        records_path = os.path.join(
+            root, "public", "static", "attendance_records")
         # 取得儲存record檔案(.jpg)的路徑
         file_path = os.path.join(records_path, fileName + '.jpg')
         plt.imsave(file_path, face)
         id = getIdentity(file_path)
         # 紀錄id至result
-        result["id"]= id
+        result["id"] = id
         recognizeResults.append(result)
     return recognizeResults
 
 # 取得單個人臉的辨識結果(id)
+
+
 def getIdentity(img_path):
     # 取得人臉資料夾的路徑 "C:\workspace\server\private\users_face"
     faces_path = os.path.join(root, "private", "users_face")
-    #尋找相同人臉
+    # 尋找相同人臉
     # ["VGG-Face", "Facenet", "OpenFace", "DeepFace", "DeepID", "ArcFace"]
-    #建立權重檔
+    # 建立權重檔
     df = DeepFace.find(
-        img_path = img_path, 
-        model_name = 'Facenet512',
-        db_path = faces_path,
-        detector_backend = 'mtcnn',
-        enforce_detection = False)
+        img_path=img_path,
+        model_name='Facenet512',
+        db_path=faces_path,
+        detector_backend='mtcnn',
+        enforce_detection=False)
     # 宣告紀錄id出現的次數的dictonary idFreq
     idFreq = {}
     # 定義權重為偵測到的人臉數
@@ -94,15 +98,17 @@ def getIdentity(img_path):
 
     # 找出現頻率最高的人的id
     maxID = ""
-    maxValue = -1 
+    maxValue = -1
     for key, value in idFreq.items():
         if value > maxValue:
             maxID = key
             maxValue = value
-            
+
     return maxID
 
 # 主程式
+
+
 def faceRecognize(file_name):
     global resultObject
     resultObject = {}
@@ -117,11 +123,11 @@ def faceRecognize(file_name):
     # 取得圖片大小
     height, width, _ = image.shape
     # 紀錄原始圖片的大小
-    resultObject["originImageSize"] = {"width" : width, "height" : height}
+    resultObject["originImageSize"] = {"width": width, "height": height}
     # 使用 dlib 偵測人脸
     detector = dlib.get_frontal_face_detector()
     # 取得人臉偵測結果(dlib.rectangle)每個人臉的方框
-    detectedResults = detector(image,0)
+    detectedResults = detector(image, 0)
     # 紀錄偵測到的人臉數
     resultObject["poepleNumbers"] = len(detectedResults)
     # 取得人臉辨識結果

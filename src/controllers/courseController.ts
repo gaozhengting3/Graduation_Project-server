@@ -6,7 +6,6 @@ import { readFile } from 'fs/promises'
 import path from 'path'
 import { v4 } from 'uuid'
 
-import { fileNameToURL } from '@/libs/uploader'
 import Attendant, { type TAttendance } from '@/models/Attendant'
 import User from '@/models/User'
 import type mongoose from 'mongoose'
@@ -48,7 +47,7 @@ const courseController = {
       await newCourse.save()
       return res.status(500).json({})
     } catch (error) {
-      console.log(error)
+      console.error(error)
       return res.status(500).send({ success: false, message: 'The course has already existed.' })
     }
   },
@@ -58,7 +57,7 @@ const courseController = {
       const course = await Course.findOne({ courseID })
       return res.status(200).json({ success: true, data: { course } })
     } catch (error) {
-      console.log(error)
+      console.error(error)
       return res.status(500).send({ success: false, message: 'Something went wrong.' })
     }
   },
@@ -68,7 +67,7 @@ const courseController = {
       const courses = await Course.find({})
       return res.status(200).json({ success: true, data: courses })
     } catch (error) {
-      console.log(error)
+      console.error(error)
       return res.status(500).send({ success: false, message: 'Something went wrong.' })
     }
   },
@@ -79,7 +78,7 @@ const courseController = {
 
       return res.status(200).json({ success: true, data: { courses } })
     } catch (error) {
-      console.log(error)
+      console.error(error)
       return res.status(500).send({ success: false, message: 'Something went wrong.' })
     }
   },
@@ -91,13 +90,13 @@ const courseController = {
       const result = await course?.updateOne({ students })
       return res.json({ success: true, result })
     } catch (error) {
-      console.log(error)
+      console.error(error)
       return res.status(500).json({ success: false, message: 'Something went wrong.' })
     }
   },
   rollCallByImage: async (req: Request, res: Response) => {
-    console.log("!!!!");
-    
+    console.log('POST to rollCallByImage.')
+
     try {
       const file = req.files?.image
       const course = JSON.parse(req.body?.course as unknown as string) as TCourse
@@ -114,49 +113,52 @@ const courseController = {
       if (!existsSync(dirPath)) mkdirSync(dirPath, { recursive: true })
 
       file.mv(uploadPath, async (err) => {
-        if (err !== undefined) {
+        try {
+          if (err !== undefined) {
+            return res.status(500).send({ success: false, message: 'Something went wrong.' })
+          } else {
+            const dateTime = new Date()
+
+            const URL = `${process.env.PYTHON_HOST ?? 'http://localhost:8001'}`
+            const requestBody = { fileName, dateTime, course }
+            const response = await Axios.post(URL, requestBody)
+            const recognizeResult = response.data as recognizeResponse
+            // const recognizeResult: recognizeResponse = {
+            //   originImageSize: { width: 100, height: 100 },
+            //   peopleNumbers: 6,
+            //   recognizeResults: [{
+            //     _id: '65075f2c47c2465a36eaddda' as unknown as mongoose.Types.ObjectId,
+            //     facePosition: { x: 0, y: 0, w: 0, h: 0 },
+            //     fileName: '9f33b7a1-a72e-43b9-a40c-c573d3e60df5-035.jpg'
+            //   }]
+            // }
+
+            const attendant = new Attendant({
+              course: course?._id,
+              attendanceMethod: 'Picture',
+              attendees: recognizeResult.recognizeResults.map((recognizeResult): TAttendance['attendees'][0] =>
+                ({ attendee: recognizeResult._id, checkInTime: dateTime, checkInType: 'Picture', proofOfAttendance: recognizeResult.fileName })
+              ),
+              fileName
+            })
+            await attendant.save()
+
+            const originCourse = await Course.findByIdAndUpdate(course._id, { retrain: false })
+            // 將新的 ObjectId 添加到原始課程的 attendants 陣列中
+            const updatedAttendants = [...(originCourse?.attendants ?? []), attendant._id]
+
+            // 更新課程的 attendants 欄位
+            await originCourse?.updateOne({ attendants: updatedAttendants })
+
+            return res.send({ success: true })
+          }
+        } catch (error) {
+          console.error(error)
           return res.status(500).send({ success: false, message: 'Something went wrong.' })
-        } else {
-          const dateTime = new Date()
-
-          const URL = `${process.env.PYTHON_HOST ?? 'http://localhost:8001'}`
-          const requestBody = { fileName, dateTime, course }
-          console.log(requestBody);
-          
-          const response = await Axios.post(URL, requestBody)
-          const recognizeResult = response.data as recognizeResponse
-          // const recognizeResult: recognizeResponse = {
-          //   originImageSize: { width: 100, height: 100 },
-          //   peopleNumbers: 6,
-          //   recognizeResults: [{
-          //     _id: '65075f2c47c2465a36eaddda' as unknown as mongoose.Types.ObjectId,
-          //     facePosition: { x: 0, y: 0, w: 0, h: 0 },
-          //     fileName: '9f33b7a1-a72e-43b9-a40c-c573d3e60df5-035.jpg'
-          //   }]
-          // }
-          const attendant = new Attendant({
-            course: course?._id,
-            attendanceMethod: 'Picture',
-            attendees: recognizeResult.recognizeResults.map((recognizeResult): TAttendance['attendees'][0] =>
-              ({ attendee: recognizeResult._id, checkInTime: dateTime, checkInType: 'Picture', proofOfAttendance: recognizeResult.fileName })
-            ),
-            fileName: fileNameToURL(['roll_call_original'], fileName)
-          })
-          await attendant.save()
-
-          const originCourse = await Course.findById(course._id)
-          // 將新的 ObjectId 添加到原始課程的 attendants 陣列中
-          const updatedAttendants = [...(originCourse?.attendants ?? []), attendant._id]
-
-          // 更新課程的 attendants 欄位
-          const result = await originCourse?.updateOne({ attendants: updatedAttendants })
-
-          console.log('result: ', result)
-          return res.send({ success: true })
         }
       })
     } catch (error) {
-      console.log(error)
+      console.error(error)
       return res.status(500).send({ success: false, message: 'Something went wrong.' })
     }
   },
@@ -191,7 +193,7 @@ const courseController = {
 
       res.json({ success: 'true', data: { courses } })
     } catch (error) {
-      console.log(error)
+      console.error(error)
       res.status(500).send({ success: false, message: 'err' })
     }
   }
