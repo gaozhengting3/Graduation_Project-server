@@ -2,17 +2,12 @@ import glob
 import os
 import uuid
 
-import cv2
 import dlib
-import matplotlib.image as img
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-from tqdm import tqdm
 
 from tensorflow.keras.models import Sequential, Model, load_model
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, Flatten, MaxPooling2D, Concatenate, Input, GlobalAveragePooling2D
+from tensorflow.keras.layers import Dense, Conv2D, Flatten, Activation, Input, BatchNormalization
 from tensorflow.keras.utils import to_categorical
 from keras_vggface.vggface import VGGFace
 
@@ -41,31 +36,24 @@ IMG_SHAPE = (IMG_WIDTH, IMG_HEIGHT, 3)
 # 取得root的路徑 "C:\workspace\server"
 root = os.getcwd()
 
-def make_model(model_path, id_list):
-    #模型可以接受的X和結果Y
-    X = []
-    Y = []
-
-    # 學生照片的資料夾路徑
-    users_dir = []
-    # 所有學生圖片的資料夾路徑 "C:\workspace\server\private\users_face\*"
-    for user_id in id_list:
-        users_dir.append((os.path.join(root,"private","users_face",user_id)))
-
-    # 整理資料變成模型可以接受的X和Y
-    for index, user_dir in enumerate(users_dir):
-        # 取得當前學生的所有照片
-        # "C:\workspace\server\private\users_face\U0924001\*"
-        user_images_path = glob.glob(os.path.join(user_dir,"*"))
+def make_dataset(dir_path, dir_names:list):
+    X=[]
+    Y=[]
+    for index, dir_name in enumerate(dir_names):
+        # 取得資料夾內的所有檔案路徑
+        files_path = glob.glob(os.path.join(dir_path, dir_name,"*"))
         # 將照片加入至X, 編號加入至Y
-        for img_path in user_images_path:
+        for file_path in files_path:
             # 取得學生id
-            img = np.array(Image.open(img_path).resize(IMG_SIZE).convert("RGB"))
+            img = np.array(Image.open(file_path).resize(IMG_SIZE).convert("RGB"))
             X.append(img)
             Y.append(index)
     X = np.array(X)
     Y = np.array(Y)
     Y = to_categorical(Y)
+    return X, Y
+
+def make_model(model_path, X, Y, output_dim):
 
     input = Input(shape=IMG_SHAPE)
     # 載入VGGFace當作base_model
@@ -75,16 +63,18 @@ def make_model(model_path, id_list):
         x.trainable = False
 
     # 將(224,224,3)的張量當作輸入數據傳給 base_model
-    # 得到 x 為 base_model 最後一層(AveragePooling2D)輸出的特徵
+    # 得到 x 為 base_model 最後一層輸出的特徵
     x = base_model(input)
+    x = Conv2D(filters=1024, kernel_size=(5,5), padding="same")(x)
+    x = BatchNormalization()(x)
+    x = Activation("relu")(x)
+    x = Conv2D(filters=2048, kernel_size=(5,5), padding="same")(x)
+    x = BatchNormalization()(x)
+    x = Activation("relu")(x)
     x = Flatten()(x)
-    x = Dense(2048, activation="relu")(x)
-    x = Dense(1024, activation="relu")(x)
-    x = Dense(512, activation="relu")(x)
-    x = Dense(256, activation="relu")(x)
     x = Dense(128, activation="relu")(x)
     # 預設六個人
-    output = Dense(len(id_list), activation='softmax', name='final_predictions')(x)
+    output = Dense(output_dim, activation='softmax', name='final_predictions')(x)
 
     model = Model(inputs=input, outputs=output)
 
@@ -93,21 +83,35 @@ def make_model(model_path, id_list):
     model.save(model_path)
 
 # 取得單個人臉的辨識結果(id)
-def getIdentity(face_img, id_list, model):
-    # 增加一個維度使照片能放進模型
-    face_img = np.expand_dims(face_img , axis=0)
-    pred = model.predict(face_img)
+def predict(face_imgs, id_list, model):
+    face_imgs = np.array(face_imgs)
+    # 如果照片中只有偵測到一個人臉，需要再增加一個維度使照片能放進模型
+    if len(face_imgs.shape) == 3:
+        # 增加一個維度使照片能放進模型
+        face_imgs = np.expand_dims(face_imgs , axis=0)
+    pred = model.predict(face_imgs)
     # 將One hot的Y轉成1維數字陣列，數字代表其id的index
-    pred = np.argmax(pred, axis=1).astype(int)[0]
-    id = id_list[pred]
-    return id
+    prediction = []
+    for single_pred in pred:
+        confidence = np.max(single_pred)
+        if confidence>0.95:
+            print(single_pred)
+            id = id_list[np.argmax(single_pred)]
+            print(id)
+            prediction.append(id)
+        else:
+            prediction.append("不明")
+            print(single_pred)
+            print("不明")
+    return prediction
 
 def getRecognizeResult(img, detectedResults, id_list, model):
     # 建立將來要回傳的所有辨識結果
     recognizeResults = []
-
+    face_imgs = []
+    count = 0
     for rectangle in detectedResults:
-
+        count += 1
         result = {}
         y = rectangle.top()
         h = rectangle.height()
@@ -118,22 +122,24 @@ def getRecognizeResult(img, detectedResults, id_list, model):
         # 紀錄facePosition至result
         result["facePosition"]= facePosition
         # 從圖片中截下人臉區域
-        face = img[y:y+h,x:x+h]
-        # 紀錄fileName至
-        fileName = str(uuid.uuid1())
-        result["fileName"]= fileName + ".jpg"
-        # 取得record資料夾的路徑 C:\workspace\server\public\static\attendance_records
-        records_path = os.path.join(root, "public", "static", "attendance_records")
-        # 取得儲存record檔案(.jpg)的路徑
-        file_path = os.path.join(records_path, fileName + '.jpg')
-        plt.imsave(file_path, face)
         # 將圖片縮放至模型可接受的大小(224,224)
-        face = np.array(Image.open(file_path).resize(IMG_SIZE).convert("RGB"))
-        # reshape成模型可以輸入的X
-        id = getIdentity(face, id_list, model)
-        # 紀錄id至result
-        result["_id"]= id
+        face = Image.fromarray(img[y:y+h,x:x+w]).resize(IMG_SIZE).convert("RGB")
+        # 紀錄fileName至
+        # fileName = str(uuid.uuid1())
+        file_name = str(count)
+        result["fileName"]= file_name + ".jpg"
+        # 取得儲存record檔案(.jpg)的路徑 C:\workspace\server\public\static\attendance_records\{file_name}.jpg
+        file_path = os.path.join(root, "public", "static", "attendance_records", file_name + '.jpg')
+        # 儲存照片至attendance_records
+        face.save(file_path)
+        # 儲存照片至face_imgs等待模型預測
+        face_imgs.append(np.array(face))
+        # 儲存單個人臉的各項紀錄
         recognizeResults.append(result)
+    prediction = predict(face_imgs, id_list, model)
+    # 紀錄模型預測出的id至result
+    for index, id in enumerate(prediction):
+        recognizeResults[index]["_id"] = id
     return recognizeResults
 
 
@@ -141,10 +147,14 @@ def getRecognizeResult(img, detectedResults, id_list, model):
 def faceRecognize(file_name, course, id_list, flag):
     global resultObject
     resultObject = {}
-    # 取得record資料夾的路徑 "C:\workspace\server\\public\static\roll_call_original"
-    records_path = os.path.join(root, "public", "static","roll_call_original")
-    # 取得儲存 roll_call_original 檔案的路徑
-    file_path = os.path.join(records_path, file_name)
+    # 使用者照片的資料夾路徑C:\workspace\server\private\users_face
+    users_dir = os.path.join(root,"private","users_face")
+    # 建立模型訓練用的資料集
+    X, Y = make_dataset(users_dir,id_list)
+    # 取得輸出層的種類數量
+    output_dim = len(id_list)
+    # 取得record資料夾的路徑 "C:\workspace\server\\public\static\roll_call_original\{file_path}"
+    file_path = os.path.join(root, "public", "static", "roll_call_original", file_name)
     # 載入圖片
     image = Image.open(file_path)
     image = image.convert('RGB')
@@ -156,18 +166,17 @@ def faceRecognize(file_name, course, id_list, flag):
     # 使用 dlib 偵測人脸
     detector = dlib.get_frontal_face_detector()
     # 取得人臉偵測結果(dlib.rectangle)每個人臉的方框
-    detectedResults = detector(image,0)
+    detectedResults = detector(image,1)
     # 紀錄偵測到的人臉數
     resultObject["poepleNumbers"] = len(detectedResults)
-
     # 取得課程的模型路徑
     model_path = os.path.join(root, "private", "courses",course,f"{course}.h5")
     # 若模型不存在則訓練一個模型
     if not os.path.exists(model_path):
-        make_model(model_path, id_list)
+        make_model(model_path, X, Y, output_dim)
     # 如果課程的人員有變動
     if flag == True:
-        retrain(model_path, id_list)
+        retrain(model_path, X, Y, output_dim)
     # 載入模型
     model = load_model(model_path)
     # 取得人臉辨識結果
@@ -177,35 +186,7 @@ def faceRecognize(file_name, course, id_list, flag):
 
     return resultObject
 
-def retrain(model_path, id_list):
-    # 學生照片的資料夾路徑
-    users_dir = []
-    # 所有學生圖片的資料夾路徑 "C:\workspace\server\private\users_face\*"
-    for user_id in id_list:
-        users_dir.append((os.path.join(root,"private","users_face",user_id)))
-    
-    #模型接受的X和結果Y
-    X = []
-    Y = []
-
-    # 整理資料變成模型可以接受的X和Y
-    for index, user_dir in enumerate(users_dir):
-        # 取得當前學生的所有照片
-        # "C:\workspace\server\private\users_face\U0924001\*"
-        user_images_path = glob.glob(os.path.join(user_dir,"*"))
-        # 將照片加入至X, 編號加入至Y
-        for img_path in user_images_path:
-            # 取得學生id
-            img = np.array(Image.open(img_path).resize(IMG_SIZE).convert("RGB"))
-            X.append(img)
-            Y.append(index)
-    X = np.array(X)
-    Y = np.array(Y)
-    print(Y.shape)
-    print(Y)
-    Y = to_categorical(Y)
-    # 輸出層的結果數，也等於len(id_list)
-    out_dim = Y.shape[1]
+def retrain(model_path, X, Y, out_dim):
     # 載入原本的模型及權重
     base_model = load_model(model_path)
     
