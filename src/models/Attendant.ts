@@ -10,10 +10,34 @@ const attendantSchema = new mongoose.Schema({
   attendees: {
     type: [
       {
-        attendee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         checkInTime: { type: Date, required: true, default: new Date() },
         checkInType: { type: String, required: true, enum: attendanceMethods },
         proofOfAttendance: { type: String, default: '' },
+        location: { type: String }
+      }
+    ],
+    default: []
+  },
+  absentees: {
+    type: [
+      {
+        checkInTime: { type: Date, required: true, default: new Date() },
+        checkInType: { type: String, required: false, enum: attendanceMethods },
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        proofOfAbsence: { type: String, default: '', required: false },
+        reasonForAbsence: { type: String, default: '缺席', required: false },
+        location: { type: String }
+      }
+    ],
+    default: []
+  },
+  unknowns: {
+    type: [
+      {
+        checkInTime: { type: Date, required: true, default: new Date() },
+        checkInType: { type: String, required: false, enum: attendanceMethods },
+        proofOfAttendance: { type: String, default: '', required: true },
         location: { type: String }
       }
     ],

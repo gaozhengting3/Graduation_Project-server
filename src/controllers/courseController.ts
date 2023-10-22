@@ -51,7 +51,7 @@ const courseController = {
       return res.status(500).send({ success: false, message: 'The course has already existed.' })
     }
   },
-  getCourseByID: async (req: Request, res: Response) => {
+  getCourseById: async (req: Request, res: Response) => {
     try {
       const { courseID } = req.params
       const course = await Course.findOne({ courseID })
@@ -61,7 +61,6 @@ const courseController = {
       return res.status(500).send({ success: false, message: 'Something went wrong.' })
     }
   },
-
   getAllCourses: async (req: Request, res: Response) => {
     try {
       const courses = await Course.find({})
@@ -76,6 +75,18 @@ const courseController = {
       const { instructor } = req.params
       const courses = await Course.find({ instructor })
 
+      return res.status(200).json({ success: true, data: { courses } })
+    } catch (error) {
+      console.error(error)
+      return res.status(500).send({ success: false, message: 'Something went wrong.' })
+    }
+  },
+  getCoursesByStudent: async (req: Request, res: Response) => {
+    try {
+      const { student } = req.params
+      console.log(student)
+      const courses = await Course.find({ students: student }).populate('instructor', 'name')
+      console.log(courses)
       return res.status(200).json({ success: true, data: { courses } })
     } catch (error) {
       console.error(error)
@@ -101,11 +112,7 @@ const courseController = {
       const file = req.files?.image
       const course = JSON.parse(req.body?.course as unknown as string) as TCourse
 
-      if (file === undefined || Array.isArray(file)) {
-        const message = 'No file was uploaded or too many files were uploaded.'
-        return res.status(400).send({ success: false, message })
-      }
-      // const fileURL = `${process.env.HOST ?? 'http://localhost'}:${process.env.PORT ?? '8000'}/uploads/${fileName}`
+      if (file === undefined || Array.isArray(file)) { return res.status(400).send({ success: false, message: 'No file was uploaded or too many files were uploaded.' }) }
 
       const fileName = v4() + '-' + file?.name
       const dirPath = path.join(rootPath, 'public', 'static', 'roll_call_original')
@@ -122,35 +129,21 @@ const courseController = {
             const URL = `${process.env.PYTHON_HOST ?? 'http://localhost:8001'}`
             const requestBody = { fileName, dateTime, course }
             const response = await Axios.post(URL, requestBody)
-            const recognizeResult = response.data as recognizeResponse
-            // const recognizeResult: recognizeResponse = {
-            //   originImageSize: { width: 100, height: 100 },
-            //   peopleNumbers: 6,
-            //   recognizeResults: [{
-            //     _id: '65075f2c47c2465a36eaddda' as unknown as mongoose.Types.ObjectId,
-            //     facePosition: { x: 0, y: 0, w: 0, h: 0 },
-            //     fileName: '9f33b7a1-a72e-43b9-a40c-c573d3e60df5-035.jpg'
-            //   }]
-            // }
+            const recognizeResults = response.data as recognizeResponse
+            const attendees = recognizeResults.recognizeResults.map((recognizeResult): TAttendance['attendees'][0] =>
+              ({ user: recognizeResult._id, checkInTime: dateTime, checkInType: 'Picture', proofOfAttendance: recognizeResult.fileName })
+            )
+            const absentees = course.students.filter((student) => attendees.findIndex((attendee) => attendee.user === student) === -1)
+              .map((student): TAttendance['absentees'][0] => ({ user: student, checkInTime: dateTime }))
+            const attendant = new Attendant({ course: course?._id, attendanceMethod: 'Picture', attendees, absentees, fileName })
 
-            const attendant = new Attendant({
-              course: course?._id,
-              attendanceMethod: 'Picture',
-              attendees: recognizeResult.recognizeResults.map((recognizeResult): TAttendance['attendees'][0] =>
-                ({ attendee: recognizeResult._id, checkInTime: dateTime, checkInType: 'Picture', proofOfAttendance: recognizeResult.fileName })
-              ),
-              fileName
-            })
             await attendant.save()
 
             const originCourse = await Course.findByIdAndUpdate(course._id, { retrain: false })
-            // 將新的 ObjectId 添加到原始課程的 attendants 陣列中
             const updatedAttendants = [...(originCourse?.attendants ?? []), attendant._id]
-
-            // 更新課程的 attendants 欄位
             await originCourse?.updateOne({ attendants: updatedAttendants })
 
-            return res.send({ success: true })
+            return res.send({ success: true, message: 'Roll call successfully.' })
           }
         } catch (error) {
           console.error(error)

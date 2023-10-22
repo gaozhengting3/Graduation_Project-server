@@ -6,7 +6,7 @@ const userController = {
   getAllByRole: async (req: Request, res: Response) => {
     try {
       const { role } = req.params
-      const students = await User.find({ role })
+      const students = await User.find({ role }).sort({ username: 1 })
       return res.status(200).json({ success: true, data: { students } })
     } catch (error) {
       return res.status(500).json({ success: false, error: 'Something went wrong.' })
