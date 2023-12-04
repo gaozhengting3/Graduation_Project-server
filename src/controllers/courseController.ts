@@ -211,6 +211,8 @@ const courseController = {
       for (const rawCourse of coursesData) {
         // const oldCourse = await Course.find({ courseID: rawCourse['開課課號'] })
         // if (oldCourse.length >= 1) continue
+        if (courses.findIndex(course => course.courseID === rawCourse['開課課號']) !== -1) continue
+
         const course = new Course({
           courseID: rawCourse['開課課號'],
           instructor: users.find(user => user.name === rawCourse['教師姓名'])?._id,
@@ -225,11 +227,48 @@ const courseController = {
           enrollment: rawCourse['選課人數'],
           credits: rawCourse['學分'],
           note: rawCourse['備註'],
-          academicYear: 111,
+          academicYear: 112,
           semester: 2
         })
         courses.push(course)
       }
+      teachers.forEach((teacher, index) => {
+        const course = new Course({
+          courseID: `DEMO00000${index}`,
+          instructor: users.find(user => user.name === teacher)?._id,
+          courseName: `展示班級-${teacher}`,
+          class: '日資工四甲',
+          compulsoryElective: '主系必修',
+          uCourse: '',
+          campus: '第二校區',
+          classTime: `(一)01 未排教室 (二)01 未排教室 (四)01 未排教室 ${teacher}`,
+          courseCode: `DEMOCODE0${index}`,
+          openSeats: 50,
+          enrollment: 6,
+          credits: 2,
+          note: '',
+          academicYear: 112,
+          semester: 2
+        })
+        courses.push(course)
+      })
+      courses.push(new Course({
+        courseID: 'DEMO000000',
+        instructor: users.find(user => user.name === '老師(展示)')?._id,
+        courseName: '專題發表-展示班級',
+        class: '日資工四甲',
+        compulsoryElective: '主系必修',
+        uCourse: '',
+        campus: '第二校區',
+        classTime: '(一)01 未排教室 (二)01 未排教室 (四)01 未排教室 老師(展示)',
+        courseCode: 'DEMOCODE00',
+        openSeats: 50,
+        enrollment: 9,
+        credits: 2,
+        note: '',
+        academicYear: 112,
+        semester: 2
+      }))
       const savedCourses = await Course.insertMany(courses)
       // const savedCourses = await Course.find({})
 

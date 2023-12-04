@@ -80,4 +80,4 @@ if __name__ == '__main__':
         os.getcwd(), "public", "static", "attendance_records")
     if not os.path.exists(attendance_records_path):
         os.makedirs(attendance_records_path)
-    app.run(host='0.0.0.0', port=8001, debug=True)
+    app.run(host='0.0.0.0', port=8002, debug=True)
