@@ -22,6 +22,7 @@
 		"ecmaFeatures": {}
 	},
 	"rules": {
-		"@typescript-eslint/no-misused-promises": ["error", { "checksVoidReturn": { "arguments": false } }]
+		"@typescript-eslint/no-misused-promises": ["error", { "checksVoidReturn": { "arguments": false } }],
+		"@typescript-eslint/no-var-requires": [0]
 	}
 }

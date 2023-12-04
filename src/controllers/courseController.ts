@@ -1,14 +1,21 @@
+import Attendant, { type TAttendant } from '@/models/Attendant'
 import Course, { type TCourse } from '@/models/Course'
-import Axios from 'axios'
+import User, { type TUser } from '@/models/User'
+// import csv from 'async-csv'
+import axios, { AxiosError } from 'axios'
+import bcrypt from 'bcrypt'
 import { type Request, type Response } from 'express'
+import type fileUpload from 'express-fileupload'
 import { existsSync, mkdirSync } from 'fs'
 import { readFile } from 'fs/promises'
+import type mongoose from 'mongoose'
 import path from 'path'
 import { v4 } from 'uuid'
 
-import Attendant, { type TAttendance } from '@/models/Attendant'
-import User from '@/models/User'
-import type mongoose from 'mongoose'
+const csv = require('async-csv')
+const cells = require('aspose.cells')
+
+const loadOptions = cells.LoadOptions(cells.FileFormatType.XLSX)
 
 let coursesData: any[]
 const rootPath = path.dirname(path.dirname(__dirname))
@@ -34,16 +41,7 @@ const courseController = {
           .status(403)
           .json({ success: false, message: 'The course has already existed.' })
       }
-      const newCourse = new Course({
-        courseID,
-        title,
-        subtitle,
-        description,
-        instructor,
-        image,
-        goals,
-        students
-      })
+      const newCourse = new Course({ courseID, title, subtitle, description, instructor, image, goals, students })
       await newCourse.save()
       return res.status(500).json({})
     } catch (error) {
@@ -63,7 +61,7 @@ const courseController = {
   },
   getAllCourses: async (req: Request, res: Response) => {
     try {
-      const courses = await Course.find({})
+      const courses = await Course.find({}).populate('instructor', ['username', 'name', 'email'])
       return res.status(200).json({ success: true, data: courses })
     } catch (error) {
       console.error(error)
@@ -73,7 +71,7 @@ const courseController = {
   getCoursesByInstructor: async (req: Request, res: Response) => {
     try {
       const { instructor } = req.params
-      const courses = await Course.find({ instructor })
+      const courses = await Course.find({ instructor }).populate('instructor', ['username', 'name', 'email'])
 
       return res.status(200).json({ success: true, data: { courses } })
     } catch (error) {
@@ -84,9 +82,7 @@ const courseController = {
   getCoursesByStudent: async (req: Request, res: Response) => {
     try {
       const { student } = req.params
-      console.log(student)
-      const courses = await Course.find({ students: student }).populate('instructor', 'name')
-      console.log(courses)
+      const courses = await Course.find({ students: student }).populate('instructor', ['username', 'name', 'email'])
       return res.status(200).json({ success: true, data: { courses } })
     } catch (error) {
       console.error(error)
@@ -97,24 +93,64 @@ const courseController = {
     try {
       const { courseID } = req.params
       const { students } = req.body
-      const course = await Course.findOne({ courseID })
-      const result = await course?.updateOne({ students })
-      return res.json({ success: true, result })
+      const file = req.files?.file as fileUpload.UploadedFile
+      if (file !== undefined) {
+        const uploadFileName = 'students.xlsx'
+        const dirPath = path.join(rootPath, 'private', 'courses', courseID)
+        const uploadPath = path.join(dirPath, uploadFileName)
+        if (!existsSync(dirPath)) mkdirSync(dirPath, { recursive: true })
+        await file.mv(uploadPath)
+
+        const workbook = new cells.Workbook(uploadPath, loadOptions)
+        const saveFileName = 'students.csv'
+        const savePath = path.join(dirPath, saveFileName)
+        workbook.save(savePath, cells.SaveFormat.CSV)
+
+        const content = await readFile(savePath, 'utf-8')
+        const rows = await csv.parse(content, { relax_column_count: true })
+        console.log(' [debug] rows: ', rows)
+        if (courseID !== rows[1][0]) return res.status(400).json({ success: false, message: '上傳班級內容錯誤，請檢查上傳檔案' })
+        const students: Array<{
+          username: string
+          name: string
+          password: string
+          email: string
+          role: string
+        }> = []
+        for (let index = 4; index < rows.length - 1; index++) {
+          const element = rows[index]
+          const password = await bcrypt.hash(element[1], 10)
+          students.push({ username: element[1], name: element[3], password, email: `${element[1].toLowerCase()}@o365.nuu.edu.tw`, role: 'student' })
+        }
+        const existedStudents = await User.find({ username: { $in: students.map(student => student.username) } })
+        const insertedStudents = await User.insertMany(students.filter(student => existedStudents.findIndex(existedStudent => existedStudent.username === student.username) === -1))
+        const insertedStudentIds = insertedStudents.map(student => student._id)
+        const course = await Course.findOneAndUpdate({ courseID }, { students: [...insertedStudentIds, ...existedStudents.map(student => student._id)] })
+        // await User.deleteMany({ })
+        // console.log(' [debug] result deleteStudents: ', course)
+        return res.json({ success: true })
+      } else {
+        const course = await Course.findOne({ courseID })
+        const result = await course?.updateOne({ students })
+        return res.json({ success: true, result })
+      }
     } catch (error) {
       console.error(error)
-      return res.status(500).json({ success: false, message: 'Something went wrong.' })
+      return res.status(500).json({ success: false, message: '請檢查上傳檔案是否正確.' })
     }
   },
   rollCallByImage: async (req: Request, res: Response) => {
     console.log('POST to rollCallByImage.')
-
     try {
       const file = req.files?.image
-      const course = JSON.parse(req.body?.course as unknown as string) as TCourse
-
+      const { courseID } = req.params
+      const course = await Course.findOne({ courseID })
+      if ((req.user as TUser).role !== 'instructor') {
+        return res.status(403).json({ success: false, message: 'Your are not instructor.' })
+      }
+      if (course === null || course === undefined) return res.status(404).json({ success: false, message: 'No course found.' })
       if (file === undefined || Array.isArray(file)) { return res.status(400).send({ success: false, message: 'No file was uploaded or too many files were uploaded.' }) }
-
-      const fileName = v4() + '-' + file?.name
+      const fileName = v4() + '.jpg'
       const dirPath = path.join(rootPath, 'public', 'static', 'roll_call_original')
       const uploadPath = path.join(dirPath, fileName)
       if (!existsSync(dirPath)) mkdirSync(dirPath, { recursive: true })
@@ -126,16 +162,26 @@ const courseController = {
           } else {
             const dateTime = new Date()
 
-            const URL = `${process.env.PYTHON_HOST ?? 'http://localhost:8001'}`
+            const URL = `${process.env.PYTHON_HOST ?? 'http://localhost:8001'}/roll-call`
             const requestBody = { fileName, dateTime, course }
-            const response = await Axios.post(URL, requestBody)
-            const recognizeResults = response.data as recognizeResponse
-            const attendees = recognizeResults.recognizeResults.map((recognizeResult): TAttendance['attendees'][0] =>
-              ({ user: recognizeResult._id, checkInTime: dateTime, checkInType: 'Picture', proofOfAttendance: recognizeResult.fileName })
+
+            let response
+            try {
+              response = await axios.post<TRecognizeResponse>(URL, requestBody)
+            } catch (err: any | AxiosError) {
+              if (axios.isAxiosError(err) && err?.response?.status === 400) return res.status(400).send({ success: false, message: '還沒有任何學生上傳人臉資料!' })
+              else throw err
+            }
+            const recognizeResponse = response.data
+            const attendees = recognizeResponse.recognizeResults.map((recognizeResult): TAttendant['attendees'][0] =>
+              ({ user: recognizeResult.user, checkInTime: dateTime, checkInType: 'Picture', facePosition: recognizeResult.facePosition, proofOfAttendance: recognizeResult.fileName })
             )
-            const absentees = course.students.filter((student) => attendees.findIndex((attendee) => attendee.user === student) === -1)
-              .map((student): TAttendance['absentees'][0] => ({ user: student, checkInTime: dateTime }))
-            const attendant = new Attendant({ course: course?._id, attendanceMethod: 'Picture', attendees, absentees, fileName })
+            const unknowns = recognizeResponse.unknowns.map((unknown): TAttendant['unknowns'][0] =>
+              ({ checkInTime: dateTime, checkInType: 'Picture', facePosition: unknown.facePosition, proofOfAttendance: unknown.fileName }))
+
+            const absentees = course.students.filter((student) => attendees.findIndex((attendee) => attendee.user.toString() === student.toString()) === -1)
+              .map((student): TAttendant['absentees'][0] => ({ user: student, checkInTime: dateTime }))
+            const attendant = new Attendant({ course: course?._id, attendanceMethod: 'Picture', attendees, absentees, unknowns, fileName })
 
             await attendant.save()
 
@@ -143,7 +189,7 @@ const courseController = {
             const updatedAttendants = [...(originCourse?.attendants ?? []), attendant._id]
             await originCourse?.updateOne({ attendants: updatedAttendants })
 
-            return res.send({ success: true, message: 'Roll call successfully.' })
+            return res.send({ success: true, message: 'Roll call successfully.', data: { attendant: attendant._id } })
           }
         } catch (error) {
           console.error(error)
@@ -178,8 +224,6 @@ const courseController = {
           credits: rawCourse['學分'],
           note: rawCourse['備註']
         })
-        // console.log(course)
-        // if (count === 1) { break }
         await course.save()
       }
       const courses = await Course.find({})
@@ -192,26 +236,70 @@ const courseController = {
   }
 }
 
-// interface trainingRequest {
-//   course: {
-//     courseID: string
-//     courseName: string
-//     students: [{
-//       _id: mongoose.Types.ObjectId
-//       username: string
-//       name: string
-//     }]
-//   }
-// }
+export default courseController
 
-interface recognizeResponse {
+type TRecognizeResponse = {
   originImageSize: { width: number, height: number }
   peopleNumbers: number
   recognizeResults: [{
-    _id: mongoose.Types.ObjectId
+    user: mongoose.Types.ObjectId
     facePosition: { x: number, y: number, w: number, h: number }
     fileName: string
   }]
-}
+  unknowns: [{
+    facePosition: { x: number, y: number, w: number, h: number }
+    fileName: string
+  }]
+  rollCallResults: [{
+    user: mongoose.Types.ObjectId
+    dateTime: Date
+    facePosition: { x: number, y: number, w: number, h: number }
+    fileName: string
+  }]
 
-export default courseController
+} & IAttendanceRecord
+interface IAttendanceRecord {
+  __v?: any
+  _id?: string
+  course: TCourse & string
+  startTime: Date
+  endTime: Date
+  detected: boolean
+  attendant: TAttendant & string
+  scores: [{
+    user: string
+    score: number
+    disappearedTimes: number
+    eyesClosedTimes: number
+    overAngleTimes: number
+  }]
+  settings: {
+    scaleFlag: boolean
+    weights: {
+      disappeared: number
+      eyesClosed: number
+      overAngle: number
+    }
+    sensitivity: number
+    minScore: number
+    maxScore: number
+    interval: number
+  }
+  frames: [{
+    fileName: string
+    dateTime: Date
+    results: [{
+      user: mongoose.Schema.Types.ObjectId
+      result: { eyesClosed: boolean }
+      eulerAngle: { pitch: number, roll: number, yaw: number } }
+    ]
+  }]
+
+  statistic: {
+    minimum: number
+    maximum: number
+    median: number
+    average: number
+    mode: number
+  }
+}

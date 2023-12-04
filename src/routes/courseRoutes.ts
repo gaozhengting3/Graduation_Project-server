@@ -9,7 +9,7 @@ router.get('/instructor/:instructor', courseController.getCoursesByInstructor)
 router.get('/student/:student', courseController.getCoursesByStudent)
 router.get('/:courseID', courseController.getCourseById)
 
-router.post('/roll-call/image', courseController.rollCallByImage)
+router.post('/roll-call/image/:courseID', courseController.rollCallByImage)
 
 router.put('/:courseID/students', courseController.updateCourseStudents)
 

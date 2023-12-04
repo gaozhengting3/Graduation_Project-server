@@ -1,4 +1,3 @@
-// import useRoutes from './routes'
 import 'module-alias/register'
 
 import 'dotenv/config'

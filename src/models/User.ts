@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema(
         try {
           return await bcrypt.compare(password, this.password)
         } catch (error) {
-          console.log(error)
+          console.error(error)
           throw error
         }
       }

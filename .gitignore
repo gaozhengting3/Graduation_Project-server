@@ -1,3 +1,9 @@
-/node_modules
 /**/*.h5
-.env
+/**/*.jpg
+/**/*.rar
+
+/src/scripts/__pycache__
+/**/shape_predictor_68_face_landmarks.dat
+
+/node_modules
+/yolov7
