@@ -14,9 +14,9 @@ IMG_HEIGHT = 224
 IMG_SIZE = (IMG_WIDTH, IMG_HEIGHT)
 root = os.getcwd()
 # 單位時間(圖片張數)
-interval = 50
+interval = 10
 # 超過一段時間都有出現的話就算點名成功
-rc_threshold = 30
+rc_threshold = 5
 # 取得每張圖片的人臉狀態
 
 
@@ -36,13 +36,18 @@ def get_status(dir_path, frames, start_time, courseID, id_list, detect_mode='dli
     img_count = 0
     # 取得第一次偵測到人臉的照片idx
     first_face_idx = frames_correct_direction(dir_path, frames)
+    # 取得 first_img_path
+    first_img_path = os.path.join(dir_path, frames[first_face_idx]["fileName"])
     # 讀取第一張有人的圖片的正確方向
-    direction = correct_direction(cv2.imread(
-        os.path.join(dir_path, frames[first_face_idx]["fileName"])))
+    try:
+        direction = correct_direction(cv2.imread(first_img_path))
+    except Exception as e:
+        print(e)
+        print("first_img_path", first_img_path)
     print("direction", direction)
-    # 如果還是沒有偵測到人則不轉向
+    # 如果還是沒有偵測到人則設定方向為旋轉180度
     if direction == -1:
-        direction = 3
+        direction = 1
     # 統計狀態狀態時採取 Slide Window 方法，1代表偵測到狀態，0則否
     rc_window = {name: [] for name in id_list}
     # 統計的點名狀態roll_call_status(預設皆為 False)
@@ -52,9 +57,7 @@ def get_status(dir_path, frames, start_time, courseID, id_list, detect_mode='dli
     # 取得上課開始時間
     start_time = datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%S.%fZ')
     # 遍歷所有的圖片
-    c = 0
     for frame in tqdm(frames):
-        c += 1
         # 如果還未記錄至間隔數則圖片計數器加 1
         img_count += 1
         # 宣告人臉辨識用的圖片陣列
@@ -78,7 +81,11 @@ def get_status(dir_path, frames, start_time, courseID, id_list, detect_mode='dli
         # 如果有旋轉方向則旋轉圖片並儲存
         if not direction == 3:
             img = cv2.rotate(img, direction)
-            cv2.imwrite(image_path, img)
+            try:
+                cv2.imwrite(image_path, img)
+            except Exception as e:
+                print(e)
+                print("image_path", image_path)
         # 偵測人臉
         # 回傳[x1_lsit, y1_lsit, x2_lsit, y2_lsit]，沒有偵測到人則會回傳False
         faces_info = my_detect_face(img, detect_mode=detect_mode)

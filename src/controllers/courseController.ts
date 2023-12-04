@@ -14,7 +14,7 @@ import { v4 } from 'uuid'
 
 const csv = require('async-csv')
 const cells = require('aspose.cells')
-
+const teachers = ['李國川', '張勤振', '王能中', '辛錫進', '蔡丕裕', '韓欽銓', '李國川', '周念湘', '林奕安', '温育瑋', '江緣貴', '黃豐隆']
 const loadOptions = cells.LoadOptions(cells.FileFormatType.XLSX)
 
 let coursesData: any[]
@@ -23,7 +23,7 @@ void (async function readJsonFile () {
   try {
     const rawData = await readFile('./data/courses.json', 'utf8')
     const jsonData: any[] = JSON.parse(rawData)
-    coursesData = jsonData.filter((course) => course['教師姓名'] === '李國川')
+    coursesData = jsonData.filter((course) => teachers.findIndex(teacher => teacher === course['教師姓名']) !== -1)
   } catch (error) {
     console.error('Error reading or parsing JSON file:', error)
   }
@@ -203,15 +203,17 @@ const courseController = {
   },
   test: async (req: Request, res: Response) => {
     try {
-      console.log('GET /course/test REQUEST.')
+      console.log('GET /course/test ')
       await Course.deleteMany({})
-      const gcl = await User.findOne({ name: '李國川' })
+      const users = await User.find({ role: 'instructor' })
+      console.log(' [debug] users: ', users)
+      const courses = []
       for (const rawCourse of coursesData) {
-        const oldCourse = await Course.find({ courseID: rawCourse['開課課號'] })
-        if (oldCourse.length >= 1) continue
+        // const oldCourse = await Course.find({ courseID: rawCourse['開課課號'] })
+        // if (oldCourse.length >= 1) continue
         const course = new Course({
           courseID: rawCourse['開課課號'],
-          instructor: gcl?._id,
+          instructor: users.find(user => user.name === rawCourse['教師姓名'])?._id,
           courseName: rawCourse['科目名稱'],
           class: rawCourse['開課班級'],
           compulsoryElective: rawCourse['必/選修'],
@@ -222,13 +224,16 @@ const courseController = {
           openSeats: rawCourse['開放名額'],
           enrollment: rawCourse['選課人數'],
           credits: rawCourse['學分'],
-          note: rawCourse['備註']
+          note: rawCourse['備註'],
+          academicYear: 111,
+          semester: 2
         })
-        await course.save()
+        courses.push(course)
       }
-      const courses = await Course.find({})
+      const savedCourses = await Course.insertMany(courses)
+      // const savedCourses = await Course.find({})
 
-      res.json({ success: 'true', data: { courses } })
+      res.json({ success: 'true', data: { courses: savedCourses } })
     } catch (error) {
       console.error(error)
       res.status(500).send({ success: false, message: 'err' })

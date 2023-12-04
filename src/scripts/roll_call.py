@@ -6,7 +6,8 @@ from retinaface import RetinaFace
 import numpy as np
 import dlib
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.layers import Dense, Flatten, Activation, Input, BatchNormalization
+from tensorflow.keras.layers import Dense, Flatten, Activation, Input, \
+    BatchNormalization, AveragePooling2D, Dropout
 from keras.callbacks import ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 from keras_vggface.vggface import VGGFace
@@ -48,7 +49,7 @@ root = os.getcwd()
 
 
 def make_dataset(dir_path, dir_names: list):
-    # 如果沒有任何人則回隨便符合格式的 np.array
+    # 如果沒有任何人則回傳400
     if len(dir_names) == 0:
         abort(400)
     X = []
@@ -62,10 +63,14 @@ def make_dataset(dir_path, dir_names: list):
         files_path = glob.glob(os.path.join(user_dir_path, "*"))
         # 將照片加入至X, 編號加入至Y
         for file_path in files_path:
-            # 取得學生id
-            img = cv2.resize(cv2.imread(file_path), IMG_SIZE)
-            X.append(img)
-            Y.append(index)
+            try:
+                # 取得學生id
+                img = cv2.resize(cv2.imread(file_path), IMG_SIZE)
+                X.append(img)
+                Y.append(index)
+            except Exception as e:
+                print(e)
+                print("file_path", file_path)
     # 如果沒有任何人則回隨便符合格式的 np.array
     if X == [] or Y == []:
         return np.zeros(shape=(2, 224, 224, 3)), np.array([1, 0], [0, 1])
@@ -97,28 +102,26 @@ def build_model(model_path, id_list):
     # 將(224,224,3)的張量當作輸入數據傳給 base_model
     # 得到 x 為 base_model 最後一層輸出的特徵
     func = K.function([base_model.get_layer(index=0).input],
-                      base_model.get_layer("avg_pool").output)
+                      base_model.get_layer(index=-2).output)
     x = func([input])
+    x = AveragePooling2D((7, 7))(x)
+    x = Dropout(0.5)(x)
     x = Flatten()(x)
-    x = Dense(2048, activation="relu")(x)
-    x = Dense(1024)(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-    x = Dense(512, activation="relu")(x)
-    x = Dense(256, activation="relu")(x)
-    x = Dense(128, activation="relu")(x)
     x = Dense(output_dim, name="Output_tensor")(x)
     x = Activation("softmax")(x)
     model = Model(inputs=input, outputs=x)
 
     model.compile(loss="categorical_crossentropy",
                   metrics=['accuracy'], optimizer='adam')
-    # 設定 callback 來儲存最好的模型，訓練後會自動將模型存至 filepath
-    checkpoint = ModelCheckpoint(
-        filepath=model_path, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-    model.fit(X, Y, epochs=20, batch_size=64,
-              validation_split=0.1, callbacks=[checkpoint])
-
+    try:
+        # 設定 callback 來儲存最好的模型，訓練後會自動將模型存至 filepath
+        checkpoint = ModelCheckpoint(
+            filepath=model_path, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
+        model.fit(X, Y, epochs=20, batch_size=16,
+                  validation_split=0.1, callbacks=[checkpoint])
+    except Exception as e:
+        print(e)
+        print("model_path", model_path)
 # 重新訓練模型
 
 
@@ -141,9 +144,9 @@ def retrain(model_path, id_list):
                   metrics=['accuracy'], optimizer='adam')
     # 設定 callback 來儲存最好的模型
     checkpoint = ModelCheckpoint(
-        filepath=model_path, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+        filepath=model_path, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
     # 訓練新的模型
-    model.fit(X, Y, epochs=20, batch_size=64,
+    model.fit(X, Y, epochs=20, batch_size=16,
               validation_split=0.1, callbacks=[checkpoint])
     return
 
@@ -396,6 +399,48 @@ def roll_call(file_name, courseID, id_list, retrain_flag):
 
     return resultObject
 
+
+# # 用來增加網路深度的block，輸入的張量與輸出相同
+# def identity_block(input_tensor, filters):
+#     filters1, filters2, filters3 = filters
+#     # 先進行 1x1 卷積來達到升維或降維
+#     x = Conv2D(filters1, kernel_size=(1, 1))(input_tensor)
+#     x = BatchNormalization()(x)
+#     x = Activation('relu')(x)
+#     # 進行 3x3 卷積
+#     x = Conv2D(filters2, kernel_size=(3, 3), padding='same')(x)
+#     x = BatchNormalization()(x)
+#     x = Activation('relu')(x)
+#     # 再進行 1x1 卷積來達到升維或降維
+#     x = Conv2D(filters3, kernel_size=(1, 1))(x)
+#     x = BatchNormalization()(x)
+
+#     x = layers.add([x, input_tensor])
+#     x = Activation('relu')(x)
+#     return x
+
+
+# # 匹配輸入與輸出維度不同的 block
+# def resnet_conv_block(input_tensor, filters):
+#     filters1, filters2, filters3 = filters
+#     # 先進行 1x1 卷積來達到升維或降維
+#     x = Conv2D(filters1, kernel_size=(1, 1))(input_tensor)
+#     x = BatchNormalization()(x)
+#     x = Activation('relu')(x)
+#     # 進行 3x3 卷積
+#     x = Conv2D(filters2, kernel_size=(3,3), padding='same')(x)
+#     x = BatchNormalization()(x)
+#     x = Activation('relu')(x)
+#     # 再進行 1x1 卷積來達到升維或降維
+#     x = Conv2D(filters3, kernel_size=(1, 1))(x)
+#     x = BatchNormalization()(x)
+#     # 為了與x的張量匹配，input_tensor也進行 1x1 卷積來達到升維或降維
+#     shortcut = Conv2D(filters3,kernel_size=(1, 1))(input_tensor)
+#     shortcut = BatchNormalization()(shortcut)
+
+#     x = layers.add([x, shortcut])
+#     x = Activation('relu')(x)
+#     return x
 
 # Testing...
 # id_list = ["hao", "lo", "ming", "ting", "xiang", "yan"]

@@ -1,12 +1,5 @@
 [
 	{
-		"username": "gcl",
-		"name": "李國川",
-		"email": "gcl@nuu.edu.tw",
-		"password": "gclgcl",
-		"role": "instructor"
-	},
-	{
 		"username": "U0924013",
 		"name": "楊翔鈞",
 		"email": "U0924013@o365.nuu.edu.tw",
@@ -28,10 +21,101 @@
 		"role": "student"
 	},
 	{
+		"username": "U0924027",
+		"name": "林冠廷",
+		"email": "U0924027@o365.nuu.edu.tw",
+		"password": "U0924027",
+		"role": "student"
+	},
+	{
 		"username": "U0924032",
 		"name": "林昌明",
 		"email": "U0924032@o365.nuu.edu.tw",
 		"password": "U0924032",
 		"role": "student"
+	},
+	{
+		"username": "U0924034",
+		"name": "張伯彥",
+		"email": "U0924034@o365.nuu.edu.tw",
+		"password": "U0924032",
+		"role": "student"
+	},
+	{
+		"name": "ccchang",
+		"username": "張勤振",
+		"email": "ccchang@nuu.edu.tw",
+		"password": "ccchangccchang",
+		"role": "instructor"
+	},
+	{
+		"name": "ncwang",
+		"username": "王能中",
+		"email": "ncwang@nuu.edu.tw",
+		"password": "ncwangncwang",
+		"role": "instructor"
+	},
+	{
+		"name": "hsin",
+		"username": "辛錫進",
+		"email": "hsin@nuu.edu.tw",
+		"password": "hsinhsin",
+		"role": "instructor"
+	},
+	{
+		"name": "pytsai",
+		"username": "蔡丕裕",
+		"email": "pytsai@nuu.edu.tw",
+		"password": "pytsaipytsai",
+		"role": "instructor"
+	},
+	{
+		"name": "cchan",
+		"username": "韓欽銓",
+		"email": "cchan@nuu.edu.tw",
+		"password": "cchancchan",
+		"role": "instructor"
+	},
+	{
+		"name": "gclee",
+		"username": "李國川",
+		"email": "gcl@nuu.edu.tw",
+		"password": "gcleegclee",
+		"role": "instructor"
+	},
+	{
+		"name": "nschou",
+		"username": "周念湘",
+		"email": "nschou@nuu.edu.tw",
+		"password": "nschounschou",
+		"role": "instructor"
+	},
+	{
+		"name": "ianlin",
+		"username": "林奕安",
+		"email": "ianlin@nuu.edu.tw",
+		"password": "ianlinianlin",
+		"role": "instructor"
+	},
+	{
+		"name": "ywwen",
+		"username": "温育瑋",
+		"email": "ywwen@nuu.edu.tw",
+		"password": "ywwenywwen",
+		"role": "instructor"
+	},
+	{
+		"name": "ykchiang",
+		"username": "江緣貴",
+		"email": "ykchiang@nuu.edu.tw",
+		"password": "ykchiangykchiang",
+		"role": "instructor"
+	},
+	{
+		"name": "flhuang",
+		"username": "黃豐隆",
+		"email": "flhuang@nuu.edu.tw",
+		"password": "flhuangflhuang",
+		"role": "instructor"
 	}
 ]

@@ -98,19 +98,19 @@ const userController = {
       return res.status(500).json({ success: false, error: 'Something went wrong.' })
     }
   },
-  insertOne: async (req: Request, res: Response) => {
+  insertMany: async (req: Request, res: Response) => {
     try {
-      const { username, name, email, password, role, thumbnail } = req.body
-      const existedUser = await User.find({ username })
-      if (existedUser.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'The username has already existed.'
-        })
+      const { users } = req.body as { users: TUser[] }
+
+      for (let index = 0; index < users.length; index++) {
+        const { username, name, email, password, role, thumbnail } = users[index]
+        const existedUser = await User.find({ username })
+        if (existedUser.length === 0) {
+          const newUser = new User({ username, name, email, password, role, thumbnail })
+          await newUser.save()
+        }
       }
-      const user = new User({ username, name, email, password, role, thumbnail })
-      await user.save()
-      return res.status(200).json({ success: true, message: 'The user has been created successfully.' })
+      return res.status(200).json({ success: true, message: 'Users have been created successfully.' })
     } catch (error) {
       console.error(error)
       return res.status(500).json({ success: false, error: 'Something went wrong.' })
@@ -219,6 +219,25 @@ const userController = {
     } catch (error) {
       // console.error(error)
       return res.status(500).send({ success: false, message: 'Something went wrong.' })
+    }
+  },
+  test: async (req: Request, res: Response) => {
+    try {
+      console.log(' [debug] to test: ')
+      const { users } = req.body as { users: TUser[] }
+      await User.deleteMany({})
+      for (let index = 0; index < users.length; index++) {
+        const { username, name, email, password, role, thumbnail } = users[index]
+        const existedUser = await User.find({ username })
+        if (existedUser.length === 0) {
+          const newUser = new User({ username, name, email, password, role, thumbnail })
+          await newUser.save()
+        }
+      }
+      return res.status(200).json({ success: true, message: 'Users have been created successfully.' })
+    } catch (error) {
+      console.error(error)
+      return res.status(500).json({ success: false, error: 'Something went wrong.' })
     }
   }
 }

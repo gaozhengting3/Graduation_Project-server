@@ -75,6 +75,7 @@ const attendanceRecordController = {
 
       if (attendanceRecord === null || attendanceRecord === undefined) return res.status(404).json({ success: false, message: 'No attendance record found.' })
       if (updateType === 'insert') {
+        console.log('PUT to insert! ')
         // console.log('PUT to insert, photoNumbers: ', photoNumbers)
         let files = req.files?.image
         if (files === undefined) { return res.status(400).send({ success: false, message: 'No file was uploaded or too many files were uploaded.' }) }
@@ -140,9 +141,10 @@ const attendanceRecordController = {
           }
           return res.send({ success: true, message: 'Already detected or on detecting.' })
         } catch (error) {
-          console.log('[error] PUT detect error!', error)
           await attendanceRecord.updateOne({ detecting: false })
-          throw error
+          console.log('[error] PUT detect error!', error)
+          return res.status(500).json({ success: false, message: 'Internal Server Error.' })
+          // throw error
         }
       }
 

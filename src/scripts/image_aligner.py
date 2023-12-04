@@ -47,12 +47,12 @@ def correct_direction(img):
         img = cv2.rotate(img, 2)
     # 重置 inverted_count
     inverted_count = 0
+
     # 程式執行到這，代表原本有偵測到人，所以重新偵測旋轉後的圖片
     detected_faces = RetinaFace.detect_faces(img)
     # 如果沒有人臉則回傳逆時針270度
     if type(detected_faces) == tuple:
         return 0
-
     for face in detected_faces:
         # 取得右眼座標點[x,y]
         right_eye = detected_faces[face]["landmarks"]["right_eye"]
@@ -74,17 +74,22 @@ def correct_direction(img):
 
 
 def img_align(img_path):
-    # 載入圖片
-    img = cv2.imread(img_path)
-    # 旋轉圖片並儲存
-    direction = correct_direction(img)
-    if direction == -1:
-        direction = 3
-    if not direction == 3:
-        img = cv2.rotate(img, direction)
-    # 存下正確方向的圖片
-    cv2.imwrite(img_path, img)
-    return img
+    try:
+        # 載入圖片
+        img = cv2.imread(img_path)
+        # 旋轉圖片並儲存
+        direction = correct_direction(img)
+        # 如果沒有偵測到人則旋轉180度
+        if direction == -1:
+            direction = 1
+        if not direction == 3:
+            img = cv2.rotate(img, direction)
+        # 存下正確方向的圖片
+        cv2.imwrite(img_path, img)
+        return img
+    except Exception as e:
+        print(e)
+        print("img_path", img_path)
 
 # 回傳第一次偵測到人臉的照片idx
 
@@ -95,9 +100,13 @@ def frames_correct_direction(dir_path, frames):
     count = 1
     while idx < len(frames):
         # 讀取圖片的正確方向
-        direction = correct_direction(cv2.imread(
-            os.path.join(dir_path, frames[idx]["fileName"])))
-        # 如果沒有偵測到任何人
+        file_path = os.path.join(dir_path, frames[idx]["fileName"])
+        try:
+            direction = correct_direction(cv2.imread(file_path))
+        except Exception as e:
+            print(e)
+            print("file_path:", file_path)
+        # 如果沒有偵測到任何人則繼續偵測
         if direction == -1:
             idx += count
             count += 1
